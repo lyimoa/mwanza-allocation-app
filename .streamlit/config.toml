@@ -1,6 +1,11 @@
-   [theme]
-   base = "light"
-   primaryColor = "#1A7F6E"
-   backgroundColor = "#FFFFFF"
-   secondaryBackgroundColor = "#F5F8FA"
-   textColor = "#1C2430"
+[theme]
+baseFontSize = 14
+base = "light"
+primaryColor = "#1A7F6E"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F8FA"
+textColor = "#1C2430"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
