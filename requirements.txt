@@ -1,0 +1,7 @@
+streamlit==1.64.0
+pulp==3.3.2
+pandas
+numpy
+scipy
+matplotlib
+pyproj
