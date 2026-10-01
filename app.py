@@ -1,8 +1,9 @@
-# Mwanza multi-stage healthcare allocation - interactive demo
+# Mwanza multi-stage healthcare allocation - interactive dashboard
 # DSAI 6220 Advanced Machine Learning, Group 1 (NM-AIST)
 #
 # Reads the tables produced by the Colab notebook and re-runs the two
-# optimization stages live, so the budgets can be changed with sliders.
+# optimization stages live, so the budgets can be changed from the sidebar.
+import base64
 import os
 
 import numpy as np
@@ -15,12 +16,14 @@ from scipy.spatial import cKDTree
 TILE_M = 640                         # one tile = 640 m x 640 m
 CLASSES = ['AnnualCrop', 'Forest', 'HerbaceousVegetation', 'Highway', 'Industrial',
            'Pasture', 'PermanentCrop', 'Residential', 'River', 'SeaLake']
-CLASS_COLOURS = ['#e9c46a', '#1b4332', '#95d5b2', '#6c757d', '#9d4edd',
-                 '#b7e4c7', '#f4a261', '#d62828', '#48cae4', '#023e8a']
-NAVY, TEAL, MINT, INK, GREY = '#1F3A5F', '#1A7F6E', '#D8F0EA', '#1C2430', '#5A6472'
-H_MAIN, H_SMALL = 540, 340           # every chart and table in a row shares one height
+CLASS_COLOURS = ['#E9C46A', '#2D6A4F', '#95D5B2', '#6C757D', '#9D4EDD',
+                 '#B7E4C7', '#F4A261', '#E76F6F', '#48CAE4', '#3B6FD4']
+NAVY, INK, GREY, LINE = '#0B2545', '#1F2937', '#64748B', '#E2E8F0'
+TEAL, MINT = '#1A7F6E', '#DDF3EC'
+GREEN, BLUE, ORANGE, RED, GOLD = '#3FA86B', '#3B6FD4', '#E08A3C', '#E5534B', '#B8962E'
+H = 440                              # every chart and table shares this height
 
-# Stage 2 assumptions (fixed; shown in the app for transparency)
+# Stage 2 assumptions (fixed; listed in the app for transparency)
 CAPS = {'Dispensary/Clinic': 10_000, 'Health Centre': 50_000, 'Hospital': 150_000}
 COST_STAFF, CAP_STAFF, MAX_STAFF = 1, 5_000, 4
 COST_UPG, CAP_UPG = 6, 40_000
@@ -28,32 +31,128 @@ CHOICES = 5
 
 st.set_page_config(page_title='Mwanza healthcare allocation', page_icon='🛰️', layout='wide')
 
+ICONS = {
+    'grid': '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    'users': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    'plus': '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/>',
+    'check': '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+    'alert': '<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/>',
+    'shield': '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3z"/><path d="m9 12 2 2 4-4"/>',
+    'pin': '<path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.800 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+    'target': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    'layers': '<path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/>',
+    'wallet': '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/>',
+    'chart': '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    'map': '<path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6z"/><path d="M9 4v14M15 6v14"/>',
+    'search': '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    'gauge': '<path d="M4 18a9 9 0 1 1 16 0"/><path d="m12 14 4-5"/>',
+}
+
+
+def svg(name, color, size=18):
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" '
+            f'fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+            f'{ICONS[name]}</svg>')
+
+
 st.markdown(f"""
 <style>
-  .stApp, [data-testid="stHeader"] {{ background: #FFFFFF; }}
-  .block-container {{ padding-top: 3.2rem; padding-bottom: 2rem; max-width: 1400px; }}
-  [data-testid="stSidebar"] {{ background: #FFFFFF; border-right: 1px solid #E3E8EF; }}
-  h1, h2, h3 {{ color: {NAVY}; letter-spacing: -0.01em; }}
-  .app-title {{ font-size: 2.0rem !important; font-weight: 800; color: {NAVY}; line-height: 1.2; margin: 4px 0 0 0; }}
-  .app-sub {{ color: {GREY}; font-size: 0.95rem; margin-top: 0.25rem; }}
-  .app-tag {{ color: {TEAL}; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }}
-  [data-testid="stMetric"] {{ background: #FFFFFF; border: 1px solid #E3E8EF; border-radius: 10px;
-                              padding: 14px 16px; box-shadow: 0 1px 2px rgba(16,24,40,0.04); }}
-  [data-testid="stMetricLabel"] {{ color: {GREY}; }}
-  [data-testid="stMetricValue"] {{ color: {NAVY}; font-weight: 700; }}
-  .stTabs [data-baseweb="tab-list"] {{ gap: 6px; border-bottom: 1px solid #E3E8EF; }}
-  .stTabs [data-baseweb="tab"] {{ padding: 10px 16px; font-weight: 600; color: {GREY}; }}
-  .stTabs [aria-selected="true"] {{ color: {TEAL}; }}
-  .panel-title {{ font-weight: 700; color: {NAVY}; font-size: 1.0rem; margin: 0.4rem 0 0.35rem 0; }}
-  .step {{ border: 1px solid #E3E8EF; border-radius: 10px; padding: 16px; height: 100%; background: #FFFFFF; }}
-  .step b {{ color: {NAVY}; }}
-  .step .n {{ display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center;
-              border-radius: 50%; background: {TEAL}; color: #fff; font-weight: 700; margin-bottom: 8px; }}
-  .step p {{ color: {INK}; font-size: 0.92rem; margin: 6px 0 0 0; }}
-  .note {{ background: {MINT}; border-radius: 10px; padding: 12px 16px; color: {INK}; font-size: 0.95rem; }}
-  .assume {{ color: {GREY}; font-size: 0.85rem; }}
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+  html, body, .stApp, [class*="css"], .stMarkdown, p, label, span, div {{ font-family: 'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif; }}
+  .stApp {{ background: #FFFFFF; }}
+  [data-testid="stHeader"] {{ background: transparent; height: 0; }}
+  .block-container {{ padding: 1.2rem 2.4rem 2.5rem 2.4rem; max-width: 1500px; }}
+  [data-testid="stSidebar"] {{ background: #FFFFFF; border-right: 1px solid {LINE}; }}
+  [data-testid="stSidebarContent"] {{ padding-top: 0.6rem; }}
+
+  /* hero banner */
+  .hero {{ display: flex; align-items: center; gap: 22px; padding: 22px 28px; border-radius: 18px; color: #FFFFFF;
+          background: linear-gradient(110deg, {NAVY} 0%, #14506A 55%, {TEAL} 100%);
+          box-shadow: 0 10px 28px rgba(11,37,69,0.18); margin-bottom: 16px; position: relative; overflow: hidden; }}
+  .hero:after {{ content: ''; position: absolute; right: -70px; top: -90px; width: 300px; height: 300px; border-radius: 50%;
+                background: rgba(255,255,255,0.07); }}
+  .hero .logo {{ background: #FFFFFF; border-radius: 14px; padding: 8px; display: flex; flex: none; }}
+  .hero .logo img {{ height: 64px; }}
+  .hero .txt {{ flex: 1; z-index: 1; }}
+  .hero .eyebrow {{ font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: {MINT}; font-weight: 600; }}
+  .hero .title {{ font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 4px 0; line-height: 1.15; color: #FFFFFF; }}
+  .hero .subtitle {{ font-size: 14.5px; color: #D6E6EE; }}
+  .hero .badge {{ z-index: 1; text-align: right; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+                 border-radius: 12px; padding: 10px 16px; font-size: 13px; line-height: 1.5; color: #FFFFFF; }}
+  .hero .badge b {{ font-size: 15px; }}
+
+  /* page tabs */
+  .st-key-nav div[role="radiogroup"] {{ gap: 8px; background: #F1F6F5; padding: 6px; border-radius: 14px; width: fit-content; }}
+  .st-key-nav div[role="radiogroup"] label {{ padding: 9px 20px; border-radius: 10px; cursor: pointer; margin: 0; }}
+  .st-key-nav label[data-testid="stRadioOption"] > div > div:first-child {{ display: none !important; }}
+  .st-key-nav label[data-testid="stRadioOption"] > div {{ gap: 0; }}
+  .st-key-nav div[role="radiogroup"] label p {{ font-size: 14.5px; color: #475569; font-weight: 600; }}
+  .st-key-nav div[role="radiogroup"] label:hover {{ background: #E2EFEC; }}
+  .st-key-nav div[role="radiogroup"] label:has(input:checked), .st-key-nav label[data-selected="true"] {{ background: {NAVY}; box-shadow: 0 2px 8px rgba(11,37,69,0.25); }}
+  .st-key-nav div[role="radiogroup"] label:has(input:checked) p, .st-key-nav label[data-selected="true"] p {{ color: #FFFFFF; }}
+
+  /* sidebar */
+  .side-title {{ font-size: 18px; font-weight: 800; color: {NAVY}; margin: 6px 0 2px 2px; }}
+  .side-label {{ font-size: 12.5px; color: {GREY}; margin: 0 0 12px 2px; }}
+  .side-foot {{ color: {GREY}; font-size: 12.5px; line-height: 1.6; margin-top: 12px; }}
+  .live {{ display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: {TEAL}; margin-right: 6px; }}
+
+  /* section heading */
+  .sec {{ display: flex; align-items: baseline; justify-content: space-between; margin: 14px 0 12px 0; }}
+  .sec .l {{ display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 800; color: {NAVY}; letter-spacing: -0.01em; }}
+  .sec .l svg {{ display: none; }}
+  .sec .l:before {{ content: ''; width: 6px; height: 22px; border-radius: 3px; background: {TEAL}; }}
+  .sec .r {{ font-size: 13px; color: {TEAL}; font-weight: 600; background: {MINT}; padding: 4px 12px; border-radius: 999px; }}
+  .sec .r:empty {{ display: none; }}
+
+  /* KPI cards */
+  .kpi {{ background: linear-gradient(180deg, #FFFFFF 0%, #F7FBFA 100%); border: 1px solid {LINE}; border-radius: 16px;
+         padding: 16px 18px; height: 136px; overflow: hidden; box-shadow: 0 4px 14px rgba(11,37,69,0.06);
+         margin-bottom: 14px; position: relative; }}
+  .kpi:before {{ content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--tone); }}
+  .kpi .h {{ display: flex; align-items: center; justify-content: space-between; flex-direction: row-reverse; gap: 10px;
+            color: #475569; font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }}
+  .kpi .chip {{ width: 34px; height: 34px; border-radius: 50%; background: var(--tint); display: flex;
+               align-items: center; justify-content: center; flex: none; }}
+  .kpi .v {{ font-size: 31px; font-weight: 800; color: {NAVY}; margin-top: 4px; letter-spacing: -0.03em; line-height: 1.1; }}
+  .kpi .s {{ color: {GREY}; font-size: 13px; margin-top: 6px; }}
+  .kpi .dot {{ display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--tone); margin-right: 7px; }}
+
+  /* chart cards */
+  [data-testid="stVerticalBlockBorderWrapper"] {{ border-radius: 16px !important; border-color: {LINE} !important;
+        background: #FFFFFF; box-shadow: 0 4px 14px rgba(11,37,69,0.06); }}
+  .card-h {{ display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; margin-bottom: 4px; }}
+  .card-h .l {{ display: flex; align-items: center; gap: 9px; font-weight: 700; color: {NAVY}; font-size: 15.5px; }}
+  .card-h .r {{ color: {GREY}; font-size: 12.5px; }}
+  .note {{ background: {MINT}; border-left: 5px solid {TEAL}; border-radius: 12px; padding: 13px 16px; color: {INK}; font-size: 14px; }}
+  .assume {{ color: {GREY}; font-size: 13px; line-height: 1.6; }}
+  .assume b {{ color: {INK}; }}
+  div[data-testid="stForm"] {{ border: 1px solid {LINE}; border-radius: 14px; background: #F7FBFA; padding: 12px 12px 6px 12px; }}
 </style>
 """, unsafe_allow_html=True)
+
+TONES = {'green': (GREEN, '#E9F6EE'), 'blue': (BLUE, '#E8EEFB'), 'orange': (ORANGE, '#FCEFE2'),
+         'red': (RED, '#FDECEA'), 'gold': (GOLD, '#F7F1DF')}
+
+
+def kpi(col, label, value, sub, tone='blue', icon='chart', dot=False):
+    c, tint = TONES[tone]
+    d = '<span class="dot"></span>' if dot else ''
+    col.markdown(f'<div class="kpi" style="--tone:{c};--tint:{tint}"><div class="h"><div class="chip">'
+                 f'{svg(icon, c)}</div>{label}</div><div class="v">{value}</div>'
+                 f'<div class="s">{d}{sub}</div></div>', unsafe_allow_html=True)
+
+
+def section(title, right='', icon='gauge'):
+    st.markdown(f'<div class="sec"><div class="l">{svg(icon, BLUE, 20)}{title}</div>'
+                f'<div class="r">{right}</div></div>', unsafe_allow_html=True)
+
+
+def card(title, hint='', icon='chart'):
+    box = st.container(border=True, height=H + 84)
+    box.markdown(f'<div class="card-h"><div class="l">{svg(icon, TEAL, 17)}{title}</div>'
+                 f'<div class="r">{hint}</div></div>', unsafe_allow_html=True)
+    return box
 
 
 # ----------------------------------------------------------------------------
@@ -98,53 +197,84 @@ def grid_xy(x_m, y_m):
 
 
 POP_GRID = to_grid(tiles.population.values)
-POP_LOG = np.where(POP_GRID > 0, np.log10(np.where(POP_GRID > 0, POP_GRID, 1)), np.nan)   # empty tiles stay white
+POP_LOG = np.where(POP_GRID > 0, np.log10(np.where(POP_GRID > 0, POP_GRID, 1)), np.nan)
+CODES = to_grid(tiles.land_class.map({n: i for i, n in enumerate(CLASSES)}).values)
+CLASS_SCALE = [[i / 10 if j == 0 else (i + 1) / 10, CLASS_COLOURS[i]] for i in range(10) for j in (0, 1)]
+CLASS_NAMES = np.vectorize(lambda v: CLASSES[int(v)] if v == v else '')(CODES)
+POP_SCALE = [[0, '#EAF7F3'], [0.35, '#8FD9C4'], [0.7, '#1A7F6E'], [1, '#0B2545']]
 
 
 # ----------------------------------------------------------------------------
-# Chart helpers (every map is a Plotly figure with a fixed height)
+# Chart helpers (every figure has the same fixed height)
 # ----------------------------------------------------------------------------
-def map_layout(fig, height=H_MAIN, legend=True):
+def map_layout(fig, legend=True):
     fig.update_layout(
-        height=height, margin=dict(l=8, r=8, t=8, b=46 if legend else 8), template='plotly_white',
-        paper_bgcolor='white', plot_bgcolor='white', showlegend=legend,
-        legend=dict(orientation='h', yanchor='top', y=-0.01, xanchor='left', x=0,
-                    bgcolor='rgba(255,255,255,0)', borderwidth=0,
-                    font=dict(size=11, color=INK)),
+        height=H, margin=dict(l=4, r=4, t=4, b=4), paper_bgcolor='white', plot_bgcolor='#F8FAFC',
+        showlegend=legend, font=dict(family='Plus Jakarta Sans, sans-serif', color=INK, size=12),
+        legend=dict(orientation='v', yanchor='top', y=1, xanchor='left', x=1.01, bgcolor='rgba(0,0,0,0)',
+                    font=dict(size=12, color=INK), itemsizing='constant'),
         xaxis=dict(visible=False, range=[-0.5, N_COLS - 0.5], constrain='domain'),
         yaxis=dict(visible=False, range=[N_ROWS - 0.5, -0.5], scaleanchor='x', constrain='domain'))
     return fig
 
 
-def base_layer(fig, opacity=0.45):
-    fig.add_trace(go.Heatmap(z=POP_LOG, colorscale='Greys', showscale=False,
-                             opacity=opacity, hoverinfo='skip'))
+def swatch(fig, name, color, symbol='square', size=11):
+    fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=name,
+                             marker=dict(size=size, color=color, symbol=symbol)))
 
 
-def facility_layer(fig, frame, name='Existing facilities', size=6):
+def base_layer(fig):
+    fig.add_trace(go.Heatmap(z=POP_LOG, colorscale=[[0, '#EEF1F5'], [1, '#B4BDCB']], showscale=False,
+                             hoverinfo='skip'))
+
+
+def facility_layer(fig, frame, name='Existing facilities'):
     fc, fr = grid_xy(frame.x_m, frame.y_m)
     fig.add_trace(go.Scatter(x=fc, y=fr, mode='markers', name=name, text=frame.name,
                              hovertemplate='%{text}<extra></extra>',
-                             marker=dict(size=size, color='#22D3EE', line=dict(color='#0F172A', width=0.6))))
+                             marker=dict(size=6, color='#0B2545', line=dict(color='#FFFFFF', width=0.8))))
 
 
-def chart_layout(fig, height=H_SMALL):
-    fig.update_layout(height=height, margin=dict(l=10, r=20, t=10, b=40), template='plotly_white',
-                      paper_bgcolor='white', plot_bgcolor='white', showlegend=False,
-                      font=dict(color=INK, size=12))
+def chart_layout(fig):
+    fig.update_layout(height=H, margin=dict(l=10, r=24, t=10, b=44), paper_bgcolor='white',
+                      plot_bgcolor='white', showlegend=False,
+                      font=dict(family='Plus Jakarta Sans, sans-serif', color=INK, size=12.5))
+    fig.update_xaxes(gridcolor='#EEF1F5', zeroline=False, linecolor=LINE, tickfont=dict(color=GREY))
+    fig.update_yaxes(gridcolor='#EEF1F5', zeroline=False, linecolor=LINE, tickfont=dict(color=INK))
     return fig
 
 
-def show(fig):
-    st.plotly_chart(fig, width='stretch', theme=None, config={'displayModeBar': False})
+def hbar(labels, values, xtitle, colors=None):
+    vmax = max(list(values) + [1])
+    fig = go.Figure(go.Bar(
+        x=values, y=labels, orientation='h', text=[f'{v:,.0f}' for v in values], textposition='outside',
+        cliponaxis=False, hovertemplate='%{y}: %{x:,.0f}<extra></extra>',
+        marker=dict(color=colors if colors else list(values), cornerradius=5,
+                    colorscale=None if colors else [[0, '#8FD9C4'], [1, '#1A7F6E']], line=dict(width=0))))
+    fig.update_yaxes(autorange='reversed', showgrid=False)
+    fig.update_xaxes(title=xtitle, range=[0, vmax * 1.2])
+    fig.update_layout(bargap=0.45)
+    return chart_layout(fig)
 
 
-def table(frame, height=H_MAIN):
-    st.dataframe(frame, hide_index=True, width='stretch', height=height)
+def donut(labels, values, colors, centre):
+    fig = go.Figure(go.Pie(labels=labels, values=values, hole=0.7, sort=False, direction='clockwise',
+                           marker=dict(colors=colors, line=dict(color='white', width=2)),
+                           textinfo='none', hovertemplate='%{label}: %{value:,.0f} (%{percent})<extra></extra>'))
+    fig.update_layout(height=H, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor='white', showlegend=True,
+                      font=dict(family='Plus Jakarta Sans, sans-serif', color=INK, size=12.5),
+                      legend=dict(orientation='h', yanchor='top', y=-0.02, xanchor='center', x=0.5),
+                      annotations=[dict(text=centre, x=0.5, y=0.5, showarrow=False,
+                                        font=dict(size=17, color=NAVY, family='Plus Jakarta Sans, sans-serif'))])
+    return fig
 
 
-def panel(title):
-    st.markdown(f'<div class="panel-title">{title}</div>', unsafe_allow_html=True)
+def show(box, fig):
+    box.plotly_chart(fig, width='stretch', theme=None, config={'displayModeBar': False})
+
+
+def table(box, frame):
+    box.dataframe(frame, hide_index=True, width='stretch', height=H)
 
 
 # ----------------------------------------------------------------------------
@@ -250,54 +380,57 @@ def solve_stage2(K, limit_km, B, allow_staff=True, allow_upgrade=True):
     return plan, pt, pulp.LpStatus[prob.status]
 
 
+
 # ----------------------------------------------------------------------------
-# Sidebar
+# Sidebar: navigation + decision controls
 # ----------------------------------------------------------------------------
+PAGES = ['Overview', 'Image Analysis', 'Access Gap', 'Stage 1 · Access', 'Stage 2 · Capacity']
 PRESETS = {'Recommended plan': (6, 16), 'Tight budget': (3, 8), 'Generous budget': (10, 30),
            'No intervention': (0, 0)}
 ACTIONS = {'Clinicians and upgrades': (True, True), 'Clinicians only': (True, False),
            'Upgrades only': (False, True)}
 
 with st.sidebar:
-    st.markdown(f'<div class="app-tag">Decision controls</div>', unsafe_allow_html=True)
-    preset = st.selectbox('Scenario', list(PRESETS) + ['Custom'], index=0,
-                          help='Pick a ready-made scenario, or choose Custom to set the budgets yourself.')
+    st.markdown('<div class="side-title">Decision controls</div>'
+                '<div class="side-label">Pick a scenario, or choose Custom to set your own budgets.</div>',
+                unsafe_allow_html=True)
+    preset = st.selectbox('Scenario', list(PRESETS) + ['Custom'], index=0, label_visibility='collapsed')
     k_def, b_def = PRESETS.get(preset, (6, 16))
     custom = preset == 'Custom'
     with st.form('controls'):
-        st.markdown('**Stage 1 · Access (Year 1)**')
-        K = st.slider('New dispensaries to build', 0, 10, k_def, disabled=not custom)
-        limit_km = st.slider('Access target (km to nearest facility)', 3.0, 10.0, 5.0, 0.5)
-        st.markdown('**Stage 2 · Capacity (Year 2)**')
-        B = st.slider('Budget (1 unit = 1 clinician per year)', 0, 40, b_def, disabled=not custom)
-        action = st.radio('What may the Year-2 budget buy?', list(ACTIONS), index=0,
-                          help='Compare what happens when only one kind of investment is allowed.')
+        K = st.slider('New dispensaries (Year 1)', 0, 10, k_def, disabled=not custom)
+        B = st.slider('Budget units (Year 2)', 0, 40, b_def, disabled=not custom)
+        limit_km = st.slider('Access target (km)', 3.0, 10.0, 5.0, 0.5)
+        action = st.selectbox('Year-2 budget may buy', list(ACTIONS), index=0)
         st.form_submit_button('Run optimization', type='primary', width='stretch')
     if not custom:
         K, B = k_def, b_def
-    st.caption('Choose a scenario or set your own budgets, then press **Run optimization**.')
+    st.markdown('<div class="side-foot"><span class="live"></span>Live · re-optimized on every run<br>'
+                'Source: Sentinel-2, Open Buildings, OpenStreetMap</div>', unsafe_allow_html=True)
 allow_staff, allow_upgrade = ACTIONS[action]
 
 # ----------------------------------------------------------------------------
-# Header
+# Top bar
 # ----------------------------------------------------------------------------
 logo = next((p for p in ('logo.png', 'logo.jpg', 'logo.jpeg', 'data/logo.png', 'data/logo.jpg')
              if os.path.exists(p)), None)
+logo_html = ''
 if logo:
-    hc = st.columns([1, 9], vertical_alignment='center')
-    hc[0].image(logo, width=110)
-    head = hc[1]
-else:
-    head = st.container()
-head.markdown(
-    '<div class="app-tag">The Nelson Mandela African Institution of Science and Technology · DSAI 6220 · Group 1</div>'
-    '<div class="app-title">Satellite-Guided Multi-Stage Allocation of Primary Healthcare</div>'
-    '<div class="app-sub">55 km × 55 km study area around Mwanza city, Tanzania · CNN land-use classification of '
-    'Sentinel-2 imagery combined with two-stage optimization</div>', unsafe_allow_html=True)
-st.write('')
+    mime = 'png' if logo.endswith('png') else 'jpeg'
+    logo_html = f'<img src="data:image/{mime};base64,{base64.b64encode(open(logo, "rb").read()).decode()}"/>'
+logo_block = f'<div class="logo">{logo_html}</div>' if logo_html else ''
+st.markdown(
+    f'<div class="hero">{logo_block}<div class="txt">'
+    '<div class="eyebrow">The Nelson Mandela African Institution of Science and Technology</div>'
+    '<div class="title">Mwanza Healthcare Allocation Planner</div>'
+    '<div class="subtitle">Satellite imagery, deep learning and two-stage optimization to decide where to build '
+    'and where to strengthen health facilities</div></div>'
+    f'<div class="badge">DSAI 6220 · Group 1<br><b>{preset}</b><br>{K} dispensaries · {B} budget units</div></div>',
+    unsafe_allow_html=True)
+page = st.radio('Page', PAGES, key='nav', horizontal=True, label_visibility='collapsed')
 
 # ----------------------------------------------------------------------------
-# Compute
+# Shared results
 # ----------------------------------------------------------------------------
 dist, dem, cand, _ = stage1_inputs(limit_km)
 total_pop = float(tiles.population.sum())
@@ -311,149 +444,183 @@ dist_after = cKDTree(all_xy).query(tiles[['x_m', 'y_m']].values)[0] / 1000
 mask_before = ((tiles.population > 0) & (dist > limit_km)).values
 mask_after = ((tiles.population > 0) & (dist_after > limit_km)).values
 under_after = float(tiles.population[mask_after].sum())
+acc_before = 100 * (1 - under_before / total_pop)
+acc_after = 100 * (1 - under_after / total_pop)
+scenario = f'{preset} · {K} dispensaries · {B} units'
 
-tab0, tab1, tab2, tab3, tab4 = st.tabs(
-    ['Overview', 'Image analysis', 'Access gap', 'Stage 1 · Access', 'Stage 2 · Capacity'])
+
+def population_map():
+    fig = go.Figure(go.Heatmap(z=POP_LOG, customdata=POP_GRID, colorscale=POP_SCALE, showscale=False,
+                               hovertemplate='%{customdata:,.0f} people<extra></extra>'))
+    return fig
+
+
+def landuse_map():
+    fig = go.Figure(go.Heatmap(z=CODES, zmin=-0.5, zmax=9.5, colorscale=CLASS_SCALE, showscale=False,
+                               customdata=CLASS_NAMES, hovertemplate='%{customdata}<extra></extra>'))
+    for n, col in zip(CLASSES, CLASS_COLOURS):
+        swatch(fig, n, col)
+    return map_layout(fig)
+
 
 # ---------------------------- Overview --------------------------------------
-with tab0:
+if page == 'Overview':
+    section('Key indicators', scenario)
     c = st.columns(4)
-    c[0].metric('Tiles analysed (640 m each)', f'{len(tiles):,}')
-    c[1].metric('Estimated population', f'{total_pop:,.0f}')
-    c[2].metric('Existing health facilities', f'{len(fac):,}')
-    c[3].metric(f'Underserved (beyond {limit_km:g} km)', f'{under_before:,.0f}',
-                f'{100 * under_before / total_pop:.1f}% of people', delta_color='off')
-    st.write('')
-    steps = [('Image analysis', 'A CNN (EfficientNetB0 fine-tuned on EuroSAT, 95.9% test accuracy) labels every '
-                                '640 m tile of a cloud-free Sentinel-2 image of Mwanza.'),
-             ('Need assessment', 'Building counts give population per tile. Distance to the nearest facility shows '
-                                 'who is underserved.'),
-             ('Stage 1 · Access', 'With a Year-1 budget, the model places new dispensaries where they reach the most '
-                                  'underserved people, only on land the CNN did not label as water.'),
-             ('Stage 2 · Capacity', 'With a Year-2 budget, a second model adds clinicians or upgrades dispensaries '
-                                    'where demand exceeds capacity, taking the Stage 1 sites as given.')]
-    for col, (i, (t, d)) in zip(st.columns(4), enumerate(steps, 1)):
-        col.markdown(f'<div class="step"><div class="n">{i}</div><br><b>{t}</b><p>{d}</p></div>',
-                     unsafe_allow_html=True)
-    st.write('')
+    kpi(c[0], 'Study area', f'{len(tiles):,}', 'tiles of 640 m × 640 m', 'blue', 'grid')
+    kpi(c[1], 'Estimated population', f'{total_pop / 1e6:.2f}M', (f'from {tiles.buildings.sum():,.0f} buildings × 4.3' if 'buildings' in tiles else 'estimated from buildings'), 'blue', 'users')
+    kpi(c[2], 'Health facilities', f'{len(fac):,}', 'existing, from OpenStreetMap', 'green', 'plus', True)
+    kpi(c[3], 'CNN test accuracy', '95.9%', 'EfficientNetB0 on EuroSAT', 'green', 'check', True)
+    c = st.columns(4)
+    kpi(c[0], 'Underserved people', f'{under_before:,.0f}', f'live beyond {limit_km:g} km of care', 'orange', 'alert')
+    kpi(c[1], 'Covered by Stage 1', f'{covered_people:,.0f}',
+        f'{100 * covered_people / under_before:.1f}% of the underserved' if under_before else 'no gap', 'green',
+        'shield', True)
+    kpi(c[2], 'Still underserved', f'{under_after:,.0f}', 'after the new dispensaries', 'red', 'pin')
+    kpi(c[3], f'Access within {limit_km:g} km', f'{acc_after:.1f}%', f'up from {acc_before:.1f}%', 'green',
+        'target', True)
+    section('Maps of the study area', '55 km × 55 km around Mwanza city', 'search')
     a, b_ = st.columns(2)
     with a:
-        panel('Where people live (darker = more people; hover for numbers)')
-        fig = go.Figure(go.Heatmap(z=POP_LOG, customdata=POP_GRID, colorscale='YlOrRd', showscale=False,
-                                   hovertemplate='%{customdata:,.0f} people<extra></extra>'))
-        show(map_layout(fig, legend=False))
+        box = card('Where people live', 'Darker = more people', 'users')
+        show(box, map_layout(population_map(), legend=False))
     with b_:
-        panel('What the CNN sees (land-use class of each tile)')
-        codes = to_grid(tiles.land_class.map({n: i for i, n in enumerate(CLASSES)}).values)
-        scale = [[i / 10 if j == 0 else (i + 1) / 10, CLASS_COLOURS[i]] for i in range(10) for j in (0, 1)]
-        names = np.vectorize(lambda v: CLASSES[int(v)] if v == v else '')(codes)
-        fig = go.Figure(go.Heatmap(z=codes, zmin=-0.5, zmax=9.5, colorscale=scale, showscale=False,
-                                   customdata=names, hovertemplate='%{customdata}<extra></extra>'))
-        show(map_layout(fig, legend=False))
+        box = card('What the CNN sees', 'Land-use class per tile', 'layers')
+        show(box, landuse_map())
 
 # ---------------------------- Image analysis --------------------------------
-with tab1:
-    left, right = st.columns(2)
-    with left:
-        panel('CNN land-use classification (one square = one 640 m tile)')
-        fig = go.Figure(go.Heatmap(z=codes, zmin=-0.5, zmax=9.5, colorscale=scale, showscale=False,
-                                   customdata=names, hovertemplate='%{customdata}<extra></extra>'))
-        for n, col in zip(CLASSES, CLASS_COLOURS):
-            fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=n,
-                                     marker=dict(size=9, color=col, symbol='square')))
-        show(map_layout(fig))
-    with right:
-        panel('Land-use classes, and a check against Google Open Buildings')
+elif page == 'Image Analysis':
+    section('Key indicators', 'CNN trained on EuroSAT, applied to Mwanza')
+    c = st.columns(4)
+    kpi(c[0], 'Test accuracy', '95.9%', '4,050 unseen EuroSAT tiles', 'green', 'check', True)
+    kpi(c[1], 'Mean confidence', f'{tiles.confidence.mean():.3f}' if 'confidence' in tiles else 'n/a',
+        'on Mwanza tiles', 'blue', 'gauge')
+    kpi(c[2], 'AUC in Mwanza', '0.913', 'against Google Open Buildings', 'green', 'shield', True)
+    kpi(c[3], 'Residential tiles', f'{int((tiles.land_class == "Residential").sum()):,}',
+        f'{100 * (tiles.land_class == "Residential").mean():.1f}% of the study area', 'orange', 'pin')
+    section('Land use and validation', 'one square = one 640 m tile', 'search')
+    a, b_ = st.columns(2)
+    with a:
+        show(card('CNN land-use classification', 'What is on the ground?', 'map'), landuse_map())
+    with b_:
+        counts = tiles.land_class.value_counts().reindex(CLASSES).fillna(0)
+        show(card('Share of tiles by class', 'How is the land used?', 'target'),
+             donut(CLASSES, counts.values, CLASS_COLOURS, f'{len(tiles):,}'))
+    a, b_ = st.columns(2)
+    with a:
+        if 'buildings' in tiles.columns:
+            m = tiles.groupby('land_class').buildings.mean().sort_values(ascending=False)
+            show(card('Mean buildings per tile, by CNN class', 'Do the labels match reality?', 'chart'),
+                 hbar(list(m.index), list(m.values.round(1)), 'Buildings per tile (Google Open Buildings)'))
+    with b_:
         s = tiles.groupby('land_class').agg(Tiles=('row', 'size')).reset_index()
         s['Area (km²)'] = (s.Tiles * 0.4096).round(1)
         s['Share (%)'] = (100 * s.Tiles / len(tiles)).round(1)
         if 'buildings' in tiles.columns:
-            s['Mean buildings per tile'] = tiles.groupby('land_class').buildings.mean().round(1).values
-        table(s.rename(columns={'land_class': 'CNN class'}).sort_values('Tiles', ascending=False))
-    c = st.columns(3)
-    c[0].metric('CNN test accuracy (EuroSAT)', '95.9%')
-    if 'confidence' in tiles.columns:
-        c[1].metric('Mean prediction confidence in Mwanza', f'{tiles.confidence.mean():.3f}')
-    c[2].metric('AUC against building data', '0.913')
+            s['Mean buildings'] = tiles.groupby('land_class').buildings.mean().round(1).values
+        table(card('Class summary', 'Details', 'grid'),
+              s.rename(columns={'land_class': 'CNN class'}).sort_values('Tiles', ascending=False))
 
 # ---------------------------- Access gap ------------------------------------
-with tab2:
+elif page == 'Access Gap':
+    section('Key indicators', f'Access target: {limit_km:g} km to the nearest facility')
+    c = st.columns(4)
+    kpi(c[0], f'Within {limit_km:g} km of care', f'{acc_before:.1f}%', 'of the estimated population', 'green',
+        'check', True)
+    kpi(c[1], 'Underserved people', f'{under_before:,.0f}', f'{100 - acc_before:.1f}% of the population',
+        'orange', 'alert')
+    kpi(c[2], 'Underserved tiles', f'{int(mask_before.sum()):,}', 'populated tiles beyond the target', 'red', 'pin')
+    kpi(c[3], 'Health facilities', f'{len(fac):,}',
+        'dispensaries, health centres, hospitals', 'blue', 'plus')
+    section('Where is the gap?', 'hover over the maps for details', 'search')
     a, b_ = st.columns(2)
     with a:
-        panel('Population and existing health facilities')
-        fig = go.Figure(go.Heatmap(z=POP_LOG, customdata=POP_GRID, colorscale='YlOrRd',
-                                   showscale=False, hovertemplate='%{customdata:,.0f} people<extra></extra>'))
-        for lv, sym, size in [('Dispensary/Clinic', 'circle', 6), ('Health Centre', 'square', 9),
-                              ('Hospital', 'star', 13)]:
+        fig = population_map()
+        for lv, sym, size, col in [('Dispensary/Clinic', 'circle', 6, '#14213D'),
+                                   ('Health Centre', 'square', 9, ORANGE), ('Hospital', 'star', 13, RED)]:
             sub = fac[fac.level == lv]
             fc, fr = grid_xy(sub.x_m, sub.y_m)
             fig.add_trace(go.Scatter(x=fc, y=fr, mode='markers', name=f'{lv} ({len(sub)})', text=sub.name,
                                      hovertemplate='%{text}<extra></extra>',
-                                     marker=dict(size=size, symbol=sym, color='#0E7490',
-                                                 line=dict(color='#FFFFFF', width=0.7))))
-        show(map_layout(fig))
+                                     marker=dict(size=size, symbol=sym, color=col,
+                                                 line=dict(color='#FFFFFF', width=0.8))))
+        show(card('Population and existing facilities', 'Where is care today?', 'map'), map_layout(fig))
     with b_:
-        panel(f'Distance to the nearest facility (green = near, red = far; black line = {limit_km:g} km)')
         dgrid = to_grid(dist)
-        dshow = np.where(POP_GRID > 0, dgrid, np.nan)
-        fig = go.Figure(go.Heatmap(z=dshow, zmin=0, zmax=12, colorscale='RdYlGn', reversescale=True,
-                                   showscale=False,
+        fig = go.Figure(go.Heatmap(z=np.where(POP_GRID > 0, dgrid, np.nan), zmin=0, zmax=12, showscale=False,
+                                   colorscale=[[0, '#3FA86B'], [0.42, '#F2E8A0'], [0.7, '#E08A3C'], [1, '#C0392B']],
                                    hovertemplate='%{z:.1f} km<extra></extra>'))
         fig.add_trace(go.Contour(z=dgrid, contours=dict(start=limit_km, end=limit_km, size=1, coloring='none'),
-                                 line=dict(color='black', width=1.2), showscale=False, hoverinfo='skip'))
-        show(map_layout(fig, legend=False))
-    c = st.columns(3)
-    c[0].metric(f'People within {limit_km:g} km of care', f'{100 * (1 - under_before / total_pop):.1f}%')
-    c[1].metric('Underserved people', f'{under_before:,.0f}')
-    c[2].metric('Underserved tiles', f'{int(mask_before.sum()):,}')
+                                 line=dict(color=NAVY, width=1.3), showscale=False, hoverinfo='skip',
+                                 showlegend=False))
+        swatch(fig, 'Near a facility', '#3FA86B')
+        swatch(fig, 'Around the limit', '#F2E8A0')
+        swatch(fig, 'Far from care', '#C0392B')
+        show(card('Distance to the nearest facility', f'Dark line = {limit_km:g} km', 'pin'), map_layout(fig))
+    a, b_ = st.columns(2)
+    with a:
+        bins = [0, 1, 2, 3, 4, 5, 6, 8, 10, 100]
+        labels = ['0–1', '1–2', '2–3', '3–4', '4–5', '5–6', '6–8', '8–10', '10+']
+        grp = pd.cut(dist, bins=bins, labels=labels, right=False)
+        by = tiles.population.groupby(grp, observed=False).sum()
+        cols = [GREEN if float(l.split('–')[0].replace('+', '')) < limit_km else ORANGE for l in labels]
+        fig = go.Figure(go.Bar(x=labels, y=by.values, marker=dict(color=cols, cornerradius=5),
+                               hovertemplate='%{x} km: %{y:,.0f} people<extra></extra>'))
+        fig.update_xaxes(title='Distance to nearest facility (km)', showgrid=False)
+        fig.update_yaxes(title='People')
+        show(card('People by distance to care', 'How far do people live?', 'chart'), chart_layout(fig))
+    with b_:
+        lv = fac.level.value_counts()
+        show(card('Facilities by level', 'What kind of care exists?', 'target'),
+             donut(list(lv.index), list(lv.values), [BLUE, RED, ORANGE][:len(lv)], f'{len(fac)}'))
 
 # ---------------------------- Stage 1 ---------------------------------------
-with tab3:
+elif page == 'Stage 1 · Access':
+    section('Key indicators', scenario)
     c = st.columns(4)
-    c[0].metric('New dispensaries', K)
-    c[1].metric('Underserved people covered', f'{covered_people:,.0f}',
-                f'{100 * covered_people / under_before:.1f}% of underserved' if under_before else None,
-                delta_color='off')
-    c[2].metric('Still underserved', f'{under_after:,.0f}')
-    c[3].metric(f'Access within {limit_km:g} km', f'{100 * (1 - under_after / total_pop):.1f}%',
-                f'{100 * (under_before - under_after) / total_pop:+.1f} points')
-    left, right = st.columns(2)
-    with left:
-        panel(f'Stage 1 plan: {K} new dispensaries with {limit_km:g} km coverage circles')
+    kpi(c[0], 'New dispensaries', f'{K}', 'Year-1 budget', 'blue', 'plus')
+    kpi(c[1], 'People covered', f'{covered_people:,.0f}',
+        f'{100 * covered_people / under_before:.1f}% of the underserved' if under_before else 'no gap', 'green',
+        'shield', True)
+    kpi(c[2], 'Still underserved', f'{under_after:,.0f}', f'beyond {limit_km:g} km after Stage 1', 'red', 'alert')
+    kpi(c[3], f'Access within {limit_km:g} km', f'{acc_after:.1f}%', f'up from {acc_before:.1f}%', 'green',
+        'target', True)
+    section('The plan', 'chosen by the maximal covering location model', 'search')
+    a, b_ = st.columns(2)
+    with a:
         status = np.where(mask_after, 1.0, np.where(mask_before, 0.0, np.nan))
         fig = go.Figure()
         base_layer(fig)
         fig.add_trace(go.Heatmap(z=to_grid(status), zmin=0, zmax=1, showscale=False, hoverinfo='skip',
-                                 colorscale=[[0, '#F59E0B'], [0.5, '#F59E0B'], [0.5, '#DC2626'], [1, '#DC2626']]))
-        for n, col in [('Underserved, now covered', '#F59E0B'), ('Still underserved', '#DC2626')]:
-            fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name=n,
-                                     marker=dict(size=10, color=col, symbol='square')))
+                                 colorscale=[[0, ORANGE], [0.5, ORANGE], [0.5, RED], [1, RED]]))
+        swatch(fig, 'Now covered', ORANGE)
+        swatch(fig, 'Still underserved', RED)
         facility_layer(fig, fac)
         if len(new_sites):
             nc, nr = grid_xy(new_sites.x_m, new_sites.y_m)
             r = limit_km * 1000 / TILE_M
             for x, y in zip(nc, nr):
                 fig.add_shape(type='circle', x0=x - r, x1=x + r, y0=y - r, y1=y + r,
-                              line=dict(color=NAVY, width=1.3, dash='dash'))
+                              line=dict(color=BLUE, width=1.4, dash='dash'))
             fig.add_trace(go.Scatter(x=nc, y=nr, mode='markers', name='New dispensaries',
                                      text=[f'S1-{i + 1}' for i in range(len(nc))],
                                      hovertemplate='%{text}<extra></extra>',
-                                     marker=dict(size=17, symbol='star', color='#FACC15',
-                                                 line=dict(color='#0F172A', width=1))))
-        show(map_layout(fig))
-    with right:
-        panel('Sites chosen by the optimization')
+                                     marker=dict(size=17, symbol='star', color='#F5C518',
+                                                 line=dict(color=NAVY, width=1))))
+        show(card('Where to build', f'Circles = {limit_km:g} km reach', 'map'), map_layout(fig))
+    with b_:
         tbl = pd.DataFrame({
             'Site': [f'S1-{i + 1}' for i in range(len(new_sites))],
             'Latitude': new_sites.lat.round(4) if len(new_sites) else [],
             'Longitude': new_sites.lon.round(4) if len(new_sites) else [],
             'CNN land class': new_sites.land_class if len(new_sites) else [],
-            'Underserved within reach': [round(covered_pop(new_sites[['x_m', 'y_m']].values[i:i + 1], dem, limit_km))
-                                         for i in range(len(new_sites))]})
-        table(tbl.sort_values('Underserved within reach', ascending=False))
-    left, right = st.columns(2)
-    with left:
-        panel('Is optimization better than simple rules? (same number of dispensaries)')
+            'People within reach': [round(covered_pop(new_sites[['x_m', 'y_m']].values[i:i + 1], dem, limit_km))
+                                    for i in range(len(new_sites))]})
+        table(card('Sites chosen', 'On CNN-verified land', 'grid'),
+              tbl.sort_values('People within reach', ascending=False))
+    section('Is the plan any good?', 'same number of dispensaries for every strategy', 'chart')
+    a, b_ = st.columns(2)
+    with a:
         if K > 0 and len(dem):
             top = dem.nlargest(K, 'population')[['x_m', 'y_m']].values
             rng = np.random.default_rng(42)
@@ -462,89 +629,98 @@ with tab3:
             vals = [covered_people, covered_pop(top, dem, limit_km), rnd]
         else:
             vals = [0, 0, 0]
-        fig = go.Figure(go.Bar(x=vals, y=['Optimized (ours)', 'Most-populated tiles first', 'Random sites'],
-                               orientation='h', marker_color=[TEAL, '#9BBFB8', '#C9CED6'],
-                               text=[f'{v:,.0f}' for v in vals], textposition='outside',
-                               hovertemplate='%{x:,.0f} people<extra></extra>'))
-        fig.update_yaxes(autorange='reversed')
-        fig.update_xaxes(title='Underserved people covered', range=[0, max(vals + [1]) * 1.22])
-        show(chart_layout(fig))
-    with right:
-        panel('Coverage for each budget (diminishing returns)')
+        show(card('Optimization vs simple rules', 'Who covers more people?', 'chart'),
+             hbar(['Optimized (ours)', 'Most-populated tiles first', 'Random sites'], vals,
+                  'Underserved people covered', [GREEN, '#9DB7E8', '#CBD5E1']))
+    with b_:
         with st.spinner('Solving for each budget...'):
             curve = [solve_stage1(k, limit_km)[1] for k in range(1, 11)]
         extra = np.diff([0] + curve)
         fig = go.Figure(go.Scatter(x=list(range(1, 11)), y=curve, mode='lines+markers', customdata=extra,
-                                   line=dict(color=NAVY, width=2.5), marker=dict(size=8, color=NAVY),
+                                   line=dict(color=BLUE, width=3, shape='spline'), fill='tozeroy',
+                                   fillcolor='rgba(59,111,212,0.08)',
+                                   marker=dict(size=8, color='white', line=dict(color=BLUE, width=2.5)),
                                    hovertemplate='%{x} dispensaries<br>%{y:,.0f} covered'
                                                  '<br>+%{customdata:,.0f} from the last one<extra></extra>'))
         if K >= 1:
-            fig.add_vline(x=K, line_dash='dash', line_color=TEAL)
-        fig.update_xaxes(title='New dispensaries', dtick=1)
-        fig.update_yaxes(title='People covered')
-        show(chart_layout(fig))
+            fig.add_vline(x=K, line_dash='dash', line_color=GOLD, line_width=1.5)
+        fig.update_xaxes(title='New dispensaries', dtick=1, showgrid=False)
+        fig.update_yaxes(title='People covered', rangemode='tozero')
+        show(card('Coverage for each budget', 'Diminishing returns', 'gauge'), chart_layout(fig))
 
 # ---------------------------- Stage 2 ---------------------------------------
-with tab4:
+else:
     with st.spinner('Stage 2: allocating clinicians and upgrades (can take up to a minute)...'):
         plan0, pt0, _ = solve_stage2(K, limit_km, 0)
         plan, pt, status = solve_stage2(K, limit_km, B, allow_staff, allow_upgrade)
     gap0, gap = float(pt0.unmet.sum()), float(pt.unmet.sum())
     acts = plan[(plan.extra_staff > 0) | (plan.upgrade > 0)].copy()
-    spent = int(COST_STAFF * acts.extra_staff.sum() + COST_UPG * acts.upgrade.sum())
+    n_up, n_staff = int(acts.upgrade.sum()), int(acts.extra_staff.sum())
+    spent = COST_STAFF * n_staff + COST_UPG * n_up
+    section('Key indicators', f'{scenario} · {action.lower()}')
     c = st.columns(4)
-    c[0].metric('Capacity gap before Stage 2', f'{gap0:,.0f}')
-    c[1].metric('Still unserved after Stage 2', f'{gap:,.0f}', f'{gap - gap0:,.0f}', delta_color='inverse')
-    c[2].metric('Budget used', f'{spent} of {B} units')
-    c[3].metric('Upgrades · clinicians', f'{int(acts.upgrade.sum())} · {int(acts.extra_staff.sum())}')
-    left, right = st.columns(2)
-    with left:
-        panel(f'Stage 2 plan with {B} units ({action.lower()})')
+    kpi(c[0], 'Capacity gap', f'{gap0:,.0f}', 'people with every nearby facility full', 'orange', 'alert')
+    kpi(c[1], 'Still unserved', f'{gap:,.0f}', 'after Stage 2' if gap > 0.5 else 'gap fully closed',
+        'red' if gap > 0.5 else 'green', 'shield' if gap <= 0.5 else 'pin', gap <= 0.5)
+    kpi(c[2], 'Budget used', f'{spent} / {B}', 'units · 1 unit = 1 clinician per year', 'blue', 'wallet')
+    kpi(c[3], 'Actions', f'{n_up} + {n_staff}', 'upgrades + extra clinicians', 'gold', 'layers')
+    section('The plan', f'solver status: {status}', 'search')
+    a, b_ = st.columns(2)
+    with a:
         g = to_grid(pt0.unmet.values, pt0)
         g[g <= 0.5] = np.nan
         fig = go.Figure()
         base_layer(fig)
-        fig.add_trace(go.Heatmap(z=g, colorscale='Reds', showscale=False,
+        fig.add_trace(go.Heatmap(z=g, colorscale=[[0, '#F7B7B2'], [1, '#B42318']], showscale=False,
                                  hovertemplate='%{z:,.0f} unserved<extra></extra>'))
-        fig.add_trace(go.Scatter(x=[None], y=[None], mode='markers', name='Unserved before Stage 2',
-                                 marker=dict(size=10, color='#DC2626', symbol='square')))
+        swatch(fig, 'Unserved before Stage 2', RED)
         facility_layer(fig, plan[plan.stage == 0], 'Facilities')
         fc, fr = grid_xy(plan.x_m, plan.y_m)
         s1, up, stf = (plan.stage == 1).values, (plan.upgrade == 1).values, plan.extra_staff.values
         fig.add_trace(go.Scatter(x=fc[s1], y=fr[s1], mode='markers', name='Built in Stage 1',
                                  text=plan.name[s1], hovertemplate='%{text}<extra></extra>',
-                                 marker=dict(size=15, symbol='star', color='#FACC15',
-                                             line=dict(color='#0F172A', width=1))))
+                                 marker=dict(size=15, symbol='star', color='#F5C518', line=dict(color=NAVY, width=1))))
         fig.add_trace(go.Scatter(x=fc[stf > 0], y=fr[stf > 0], mode='markers', name='Extra clinicians',
                                  text=[f'{n}: +{k} clinician(s)' for n, k in zip(plan.name[stf > 0], stf[stf > 0])],
                                  hovertemplate='%{text}<extra></extra>',
-                                 marker=dict(size=14 + 4 * stf[stf > 0], symbol='circle-open', color='#2563EB',
+                                 marker=dict(size=14 + 4 * stf[stf > 0], symbol='circle-open', color=BLUE,
                                              line=dict(width=2.5))))
-        fig.add_trace(go.Scatter(x=fc[up], y=fr[up], mode='markers', name='Upgraded to health centre',
+        fig.add_trace(go.Scatter(x=fc[up], y=fr[up], mode='markers', name='Upgraded',
                                  text=plan.name[up], hovertemplate='%{text}: upgrade<extra></extra>',
                                  marker=dict(size=20, symbol='square-open', color='#7C3AED', line=dict(width=2.5))))
-        show(map_layout(fig))
-    with right:
-        panel(f'Actions chosen (solver status: {status})')
+        show(card('Where to add capacity', 'Red = the gap before Stage 2', 'map'), map_layout(fig))
+    with b_:
         showt = acts[['name', 'stage', 'capacity', 'served', 'extra_staff', 'upgrade']].copy()
         showt['stage'] = showt.stage.map({0: 'Existing', 1: 'Stage 1'})
         showt['upgrade'] = showt.upgrade.map({0: '', 1: 'Yes'})
         showt['served'] = showt.served.round(0)
         showt.columns = ['Facility', 'Built in', 'Base capacity', 'People served', 'Extra clinicians', 'Upgrade']
-        table(showt.sort_values('People served', ascending=False))
-    n_s1 = int((acts.stage == 1).sum())
-    if n_s1:
-        st.markdown(f'<div class="note"><b>The stages are linked.</b> {n_s1} dispensary built in Stage 1 needs extra '
-                    'capacity in Stage 2. Year-1 building decisions create Year-2 needs, so the stages must be '
-                    'planned together.</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<p class="assume"><b>Model assumptions.</b> Capacity: dispensary 10,000 people, health centre 50,000, '
-        'hospital 150,000. One extra clinician costs 1 unit and adds 5,000 capacity (at most 4 per facility). '
-        'Upgrading a dispensary to a health centre costs 6 units and adds 40,000. People may use any of their five '
-        f'nearest facilities within {limit_km:g} km. These are planning assumptions, not official figures.</p>',
-        unsafe_allow_html=True)
+        table(card('Actions chosen', 'Staff or upgrade?', 'grid'),
+              showt.sort_values('People served', ascending=False))
+    section('How the budget is used', 'assumptions are listed on the right', 'chart')
+    a, b_ = st.columns(2)
+    with a:
+        parts = [COST_UPG * n_up, COST_STAFF * n_staff, max(B - spent, 0)]
+        show(card('Budget split', 'Where do the units go?', 'wallet'),
+             donut(['Upgrades', 'Clinicians', 'Unused'], parts, ['#7C3AED', BLUE, '#CBD5E1'], f'{spent} / {B}')
+             if B > 0 else donut(['No budget'], [1], ['#CBD5E1'], '0'))
+    with b_:
+        box = card('Reading the result', 'Assumptions', 'layers')
+        n_s1 = int((acts.stage == 1).sum())
+        if n_s1:
+            box.markdown(f'<div class="note"><b>The stages are linked.</b> {n_s1} dispensary built in Stage 1 needs '
+                         'extra capacity in Stage 2. Year-1 building decisions create Year-2 needs, so the stages '
+                         'must be planned together.</div>', unsafe_allow_html=True)
+        box.markdown(
+            '<p class="assume"><b>Capacity.</b> Dispensary 10,000 people · health centre 50,000 · hospital 150,000.<br>'
+            '<b>Clinician.</b> Costs 1 unit and adds 5,000 capacity (at most 4 per facility).<br>'
+            '<b>Upgrade.</b> Dispensary to health centre: costs 6 units and adds 40,000 capacity.<br>'
+            f'<b>Choice.</b> People may use any of their five nearest facilities within {limit_km:g} km.<br>'
+            '<b>Full facility.</b> The people depending on it exceed its assumed capacity.<br><br>'
+            'These are planning assumptions, not official figures. With official data the same model can be rerun.</p>',
+            unsafe_allow_html=True)
 
-st.divider()
-st.caption('Data: Sentinel-2 (Copernicus) via Google Earth Engine · EuroSAT · Google Open Buildings · '
-           'OpenStreetMap health facilities (HOT/HDX) · 2022 Tanzania Census household size. '
-           'Population, capacities and costs are estimates and assumptions.')
+st.markdown(f'<p class="assume" style="margin-top:18px;border-top:1px solid {LINE};padding-top:12px">'
+            'Data: Sentinel-2 (Copernicus) via Google Earth Engine · EuroSAT · Google Open Buildings · OpenStreetMap '
+            'health facilities (HOT/HDX) · 2022 Tanzania Census household size. Population, capacities and costs are '
+            'estimates and assumptions.</p>', unsafe_allow_html=True)
