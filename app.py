@@ -60,70 +60,81 @@ st.markdown(f"""
   @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
   html, body, .stApp, [class*="css"], .stMarkdown, p, label, span, div {{ font-family: 'Plus Jakarta Sans', -apple-system, 'Segoe UI', sans-serif; }}
   .stApp {{ background: #FFFFFF; }}
-  [data-testid="stHeader"] {{ background: transparent; height: 0; }}
+  [data-testid="stHeader"] {{ background: transparent; }}
+  [data-testid="stToolbarActions"], [data-testid="stMainMenu"], [data-testid="stAppDeployButton"],
+  [data-testid="stDecoration"], [data-testid="stStatusWidget"], #MainMenu, footer,
+  .stDeployButton, [class*="viewerBadge"] {{ display: none !important; }}
   .block-container {{ padding: 1.2rem 2.4rem 2.5rem 2.4rem; max-width: 1500px; }}
   [data-testid="stSidebar"] {{ background: #FFFFFF; border-right: 1px solid {LINE}; }}
   [data-testid="stSidebarContent"] {{ padding-top: 0.6rem; }}
 
   /* hero banner */
-  .hero {{ display: flex; align-items: center; gap: 22px; padding: 22px 28px; border-radius: 18px; color: #FFFFFF;
+  .hero {{ display: flex; align-items: center; gap: 22px; padding: 16px 24px; border-radius: 16px; color: #FFFFFF;
           background: linear-gradient(110deg, {NAVY} 0%, #14506A 55%, {TEAL} 100%);
           box-shadow: 0 10px 28px rgba(11,37,69,0.18); margin-bottom: 16px; position: relative; overflow: hidden; }}
   .hero:after {{ content: ''; position: absolute; right: -70px; top: -90px; width: 300px; height: 300px; border-radius: 50%;
                 background: rgba(255,255,255,0.07); }}
   .hero .logo {{ background: #FFFFFF; border-radius: 14px; padding: 8px; display: flex; flex: none; }}
-  .hero .logo img {{ height: 64px; }}
+  .hero .logo img {{ height: 54px; }}
   .hero .txt {{ flex: 1; z-index: 1; }}
-  .hero .eyebrow {{ font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: {MINT}; font-weight: 600; }}
-  .hero .title {{ font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 4px 0; line-height: 1.15; color: #FFFFFF; }}
-  .hero .subtitle {{ font-size: 14.5px; color: #D6E6EE; }}
+  .hero .eyebrow {{ font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: {MINT}; font-weight: 600; }}
+  .hero .title {{ font-size: 23px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 4px 0; line-height: 1.15; color: #FFFFFF; }}
+  .hero .subtitle {{ font-size: 13px; color: #D6E6EE; }}
   .hero .badge {{ z-index: 1; text-align: right; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
-                 border-radius: 12px; padding: 10px 16px; font-size: 13px; line-height: 1.5; color: #FFFFFF; }}
-  .hero .badge b {{ font-size: 15px; }}
+                 border-radius: 12px; padding: 8px 14px; font-size: 12px; line-height: 1.5; color: #FFFFFF; }}
+  .hero .badge b {{ font-size: 13.5px; }}
 
   /* page tabs */
   .st-key-nav div[role="radiogroup"] {{ gap: 8px; background: #F1F6F5; padding: 6px; border-radius: 14px; width: fit-content; }}
-  .st-key-nav div[role="radiogroup"] label {{ padding: 9px 20px; border-radius: 10px; cursor: pointer; margin: 0; }}
+  .st-key-nav div[role="radiogroup"] label {{ padding: 7px 16px; border-radius: 10px; cursor: pointer; margin: 0; }}
   .st-key-nav label[data-testid="stRadioOption"] > div > div:first-child {{ display: none !important; }}
   .st-key-nav label[data-testid="stRadioOption"] > div {{ gap: 0; }}
-  .st-key-nav div[role="radiogroup"] label p {{ font-size: 14.5px; color: #475569; font-weight: 600; }}
+  .st-key-nav div[role="radiogroup"] label p {{ font-size: 13px; color: #475569; font-weight: 600; }}
   .st-key-nav div[role="radiogroup"] label:hover {{ background: #E2EFEC; }}
   .st-key-nav div[role="radiogroup"] label:has(input:checked), .st-key-nav label[data-selected="true"] {{ background: {NAVY}; box-shadow: 0 2px 8px rgba(11,37,69,0.25); }}
   .st-key-nav div[role="radiogroup"] label:has(input:checked) p, .st-key-nav label[data-selected="true"] p {{ color: #FFFFFF; }}
 
   /* sidebar */
-  .side-title {{ font-size: 18px; font-weight: 800; color: {NAVY}; margin: 6px 0 2px 2px; }}
+  .side-title {{ font-size: 16px; font-weight: 800; color: {NAVY}; margin: 6px 0 2px 2px; }}
   .side-label {{ font-size: 12.5px; color: {GREY}; margin: 0 0 12px 2px; }}
   .side-foot {{ color: {GREY}; font-size: 12.5px; line-height: 1.6; margin-top: 12px; }}
   .live {{ display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: {TEAL}; margin-right: 6px; }}
 
   /* section heading */
   .sec {{ display: flex; align-items: baseline; justify-content: space-between; margin: 14px 0 12px 0; }}
-  .sec .l {{ display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 800; color: {NAVY}; letter-spacing: -0.01em; }}
+  .sec .l {{ display: flex; align-items: center; gap: 10px; font-size: 16.5px; font-weight: 800; color: {NAVY}; letter-spacing: -0.01em; }}
   .sec .l svg {{ display: none; }}
-  .sec .l:before {{ content: ''; width: 6px; height: 22px; border-radius: 3px; background: {TEAL}; }}
-  .sec .r {{ font-size: 13px; color: {TEAL}; font-weight: 600; background: {MINT}; padding: 4px 12px; border-radius: 999px; }}
+  .sec .l:before {{ content: ''; width: 5px; height: 19px; border-radius: 3px; background: {TEAL}; }}
+  .sec .r {{ font-size: 12px; color: {TEAL}; font-weight: 600; background: {MINT}; padding: 4px 12px; border-radius: 999px; }}
   .sec .r:empty {{ display: none; }}
 
   /* KPI cards */
   .kpi {{ background: linear-gradient(180deg, #FFFFFF 0%, #F7FBFA 100%); border: 1px solid {LINE}; border-radius: 16px;
-         padding: 16px 18px; height: 136px; overflow: hidden; box-shadow: 0 4px 14px rgba(11,37,69,0.06);
+         padding: 14px 16px; height: 118px; overflow: hidden; box-shadow: 0 4px 14px rgba(11,37,69,0.06);
          margin-bottom: 14px; position: relative; }}
   .kpi:before {{ content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--tone); }}
   .kpi .h {{ display: flex; align-items: center; justify-content: space-between; flex-direction: row-reverse; gap: 10px;
-            color: #475569; font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }}
-  .kpi .chip {{ width: 34px; height: 34px; border-radius: 50%; background: var(--tint); display: flex;
+            color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }}
+  .kpi .chip {{ width: 30px; height: 30px; border-radius: 50%; background: var(--tint); display: flex;
                align-items: center; justify-content: center; flex: none; }}
-  .kpi .v {{ font-size: 31px; font-weight: 800; color: {NAVY}; margin-top: 4px; letter-spacing: -0.03em; line-height: 1.1; }}
-  .kpi .s {{ color: {GREY}; font-size: 13px; margin-top: 6px; }}
+  .kpi .v {{ font-size: 25px; font-weight: 800; color: {NAVY}; margin-top: 4px; letter-spacing: -0.03em; line-height: 1.1; }}
+  .kpi .s {{ color: {GREY}; font-size: 12px; margin-top: 5px; }}
   .kpi .dot {{ display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--tone); margin-right: 7px; }}
 
   /* chart cards */
   [data-testid="stVerticalBlockBorderWrapper"] {{ border-radius: 16px !important; border-color: {LINE} !important;
         background: #FFFFFF; box-shadow: 0 4px 14px rgba(11,37,69,0.06); }}
   .card-h {{ display: flex; align-items: center; justify-content: space-between; padding-bottom: 8px; margin-bottom: 4px; }}
-  .card-h .l {{ display: flex; align-items: center; gap: 9px; font-weight: 700; color: {NAVY}; font-size: 15.5px; }}
-  .card-h .r {{ color: {GREY}; font-size: 12.5px; }}
+  .card-h .l {{ display: flex; align-items: center; gap: 9px; font-weight: 700; color: {NAVY}; font-size: 14px; }}
+  .card-h .r {{ color: {GREY}; font-size: 11.5px; }}
+  .tblwrap {{ height: {H}px; overflow: auto; border: 1px solid {LINE}; border-radius: 12px; }}
+  table.tbl {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+  table.tbl th {{ position: sticky; top: 0; background: {NAVY}; color: #FFFFFF; text-align: left; font-weight: 600;
+                 font-size: 11.5px; letter-spacing: 0.05em; text-transform: uppercase; padding: 11px 14px; }}
+  table.tbl td {{ padding: 11px 14px; border-bottom: 1px solid #EEF2F4; color: {INK}; }}
+  table.tbl tr:nth-child(even) td {{ background: #F7FBFA; }}
+  table.tbl tr:hover td {{ background: {MINT}; }}
+  table.tbl .num {{ text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }}
   .note {{ background: {MINT}; border-left: 5px solid {TEAL}; border-radius: 12px; padding: 13px 16px; color: {INK}; font-size: 14px; }}
   .assume {{ color: {GREY}; font-size: 13px; line-height: 1.6; }}
   .assume b {{ color: {INK}; }}
@@ -210,7 +221,7 @@ POP_SCALE = [[0, '#EAF7F3'], [0.35, '#8FD9C4'], [0.7, '#1A7F6E'], [1, '#0B2545']
 def map_layout(fig, legend=True):
     fig.update_layout(
         height=H, margin=dict(l=4, r=4, t=4, b=4), paper_bgcolor='white', plot_bgcolor='#F8FAFC',
-        showlegend=legend, font=dict(family='Plus Jakarta Sans, sans-serif', color=INK, size=12),
+        showlegend=legend, font=dict(family="'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif", color=INK, size=12),
         legend=dict(orientation='v', yanchor='top', y=1, xanchor='left', x=1.01, bgcolor='rgba(0,0,0,0)',
                     font=dict(size=12, color=INK), itemsizing='constant'),
         xaxis=dict(visible=False, range=[-0.5, N_COLS - 0.5], constrain='domain'),
@@ -235,37 +246,66 @@ def facility_layer(fig, frame, name='Existing facilities'):
                              marker=dict(size=6, color='#0B2545', line=dict(color='#FFFFFF', width=0.8))))
 
 
+FONT = "'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif"
+HOVER = dict(bgcolor=NAVY, bordercolor=NAVY, font=dict(color='white', size=12, family=FONT))
+
+
 def chart_layout(fig):
-    fig.update_layout(height=H, margin=dict(l=10, r=24, t=10, b=44), paper_bgcolor='white',
-                      plot_bgcolor='white', showlegend=False,
-                      font=dict(family='Plus Jakarta Sans, sans-serif', color=INK, size=12.5))
-    fig.update_xaxes(gridcolor='#EEF1F5', zeroline=False, linecolor=LINE, tickfont=dict(color=GREY))
-    fig.update_yaxes(gridcolor='#EEF1F5', zeroline=False, linecolor=LINE, tickfont=dict(color=INK))
+    fig.update_layout(height=H, margin=dict(l=24, r=28, t=18, b=46), paper_bgcolor='white',
+                      plot_bgcolor='white', showlegend=False, hoverlabel=HOVER,
+                      font=dict(family=FONT, color=INK, size=12))
+    fig.update_xaxes(gridcolor='#EEF2F4', griddash='dot', zeroline=False, showline=False, ticks='',
+                     tickfont=dict(color=GREY, size=11), title_font=dict(color=GREY, size=11.5))
+    fig.update_yaxes(gridcolor='#EEF2F4', griddash='dot', zeroline=False, showline=False, ticks='', automargin=True,
+                     tickfont=dict(color=INK, size=12), title_font=dict(color=GREY, size=11.5))
     return fig
 
 
 def hbar(labels, values, xtitle, colors=None):
-    vmax = max(list(values) + [1])
-    fig = go.Figure(go.Bar(
-        x=values, y=labels, orientation='h', text=[f'{v:,.0f}' for v in values], textposition='outside',
-        cliponaxis=False, hovertemplate='%{y}: %{x:,.0f}<extra></extra>',
-        marker=dict(color=colors if colors else list(values), cornerradius=5,
-                    colorscale=None if colors else [[0, '#8FD9C4'], [1, '#1A7F6E']], line=dict(width=0))))
-    fig.update_yaxes(autorange='reversed', showgrid=False)
-    fig.update_xaxes(title=xtitle, range=[0, vmax * 1.2])
-    fig.update_layout(bargap=0.45)
-    return chart_layout(fig)
+    """Slim rounded bars on a pale track; the name sits above each bar and the value at its end."""
+    values = [float(v) for v in values]
+    labels = [str(l) for l in labels]
+    vmax = max(values + [1])
+    slot = (H - 70) / max(len(values), 1)            # pixels available per bar
+    bar_px = min(16, slot * 0.3)
+    w = bar_px / slot
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=[vmax] * len(values), y=labels, orientation='h', hoverinfo='skip', width=w,
+                         marker=dict(color='#EEF3F4', cornerradius=30, line=dict(width=0))))
+    fig.add_trace(go.Bar(
+        x=values, y=labels, orientation='h', hovertemplate='%{y}: %{x:,.0f}<extra></extra>', width=w,
+        marker=dict(color=colors if colors else values, cornerradius=30, line=dict(width=0),
+                    colorscale=None if colors else [[0, '#7FD3BD'], [1, '#1A7F6E']])))
+    for lab, v in zip(labels, values):
+        fig.add_annotation(x=0, y=lab, text=lab, showarrow=False, xanchor='left', yanchor='bottom',
+                           yshift=bar_px / 2 + 3, font=dict(size=12.5, color=INK, family=FONT))
+        fig.add_annotation(x=vmax, y=lab, text=f'<b>{v:,.0f}</b>', showarrow=False, xanchor='right',
+                           yanchor='bottom', yshift=bar_px / 2 + 3, font=dict(size=13, color=NAVY, family=FONT))
+    fig.update_yaxes(autorange='reversed', showgrid=False, showticklabels=False)
+    fig.update_xaxes(title=xtitle, range=[0, vmax * 1.005], showgrid=False, showticklabels=False)
+    fig.update_layout(barmode='overlay')
+    chart_layout(fig)
+    fig.update_layout(margin=dict(l=14, r=14, t=24, b=40))
+    return fig
 
 
-def donut(labels, values, colors, centre):
-    fig = go.Figure(go.Pie(labels=labels, values=values, hole=0.7, sort=False, direction='clockwise',
-                           marker=dict(colors=colors, line=dict(color='white', width=2)),
-                           textinfo='none', hovertemplate='%{label}: %{value:,.0f} (%{percent})<extra></extra>'))
+def donut(labels, values, colors, centre, caption='total'):
+    keep = [i for i, v in enumerate(values) if v > 0]
+    labels, values, colors = [labels[i] for i in keep], [values[i] for i in keep], [colors[i] for i in keep]
+    total = sum(values) or 1
+    names = [f'{l}  <b>{100 * v / total:.0f}%</b>' for l, v in zip(labels, values)]
+    fig = go.Figure(go.Pie(labels=names, values=values, hole=0.72, sort=False, direction='clockwise',
+                           domain=dict(x=[0.02, 0.56], y=[0.06, 0.94]),
+                           marker=dict(colors=colors, line=dict(color='white', width=3)),
+                           textinfo='none', hovertemplate='%{label}<br>%{value:,.0f}<extra></extra>'))
     fig.update_layout(height=H, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor='white', showlegend=True,
-                      font=dict(family='Plus Jakarta Sans, sans-serif', color=INK, size=12.5),
-                      legend=dict(orientation='h', yanchor='top', y=-0.02, xanchor='center', x=0.5),
-                      annotations=[dict(text=centre, x=0.5, y=0.5, showarrow=False,
-                                        font=dict(size=17, color=NAVY, family='Plus Jakarta Sans, sans-serif'))])
+                      hoverlabel=HOVER, font=dict(family=FONT, color=INK, size=12),
+                      legend=dict(orientation='v', yanchor='middle', y=0.5, xanchor='left', x=0.62,
+                                  font=dict(size=12.5, color=INK), itemsizing='constant', tracegroupgap=6),
+                      annotations=[dict(text=f'<b>{centre}</b>', x=0.29, y=0.53, showarrow=False,
+                                        font=dict(size=24, color=NAVY, family=FONT)),
+                                   dict(text=caption, x=0.29, y=0.44, showarrow=False,
+                                        font=dict(size=11.5, color=GREY, family=FONT))])
     return fig
 
 
@@ -274,7 +314,29 @@ def show(box, fig):
 
 
 def table(box, frame):
-    box.dataframe(frame, hide_index=True, width='stretch', height=H)
+    """A clean HTML table: navy header, striped rows, numbers right-aligned with thousands separators."""
+    head = ''.join(f'<th class="{"num" if pd.api.types.is_numeric_dtype(frame[c]) else ""}">{c}</th>'
+                   for c in frame.columns)
+    rows = []
+    for _, r in frame.iterrows():
+        cells = []
+        for c in frame.columns:
+            v = r[c]
+            if pd.api.types.is_numeric_dtype(frame[c]):
+                if pd.isna(v):
+                    txt = ''
+                elif float(v) == int(v) or abs(v) >= 1000:
+                    txt = f'{v:,.0f}'
+                elif c.lower().startswith(('lat', 'lon')):
+                    txt = f'{v:.4f}'
+                else:
+                    txt = f'{v:,.1f}'
+                cells.append(f'<td class="num">{txt}</td>')
+            else:
+                cells.append(f'<td>{"" if pd.isna(v) else v}</td>')
+        rows.append('<tr>' + ''.join(cells) + '</tr>')
+    box.markdown(f'<div class="tblwrap"><table class="tbl"><thead><tr>{head}</tr></thead>'
+                 f'<tbody>{"".join(rows)}</tbody></table></div>', unsafe_allow_html=True)
 
 
 # ----------------------------------------------------------------------------
@@ -505,7 +567,7 @@ elif page == 'Image Analysis':
     with b_:
         counts = tiles.land_class.value_counts().reindex(CLASSES).fillna(0)
         show(card('Share of tiles by class', 'How is the land used?', 'target'),
-             donut(CLASSES, counts.values, CLASS_COLOURS, f'{len(tiles):,}'))
+             donut(CLASSES, counts.values, CLASS_COLOURS, f'{len(tiles):,}', 'tiles'))
     a, b_ = st.columns(2)
     with a:
         if 'buildings' in tiles.columns:
@@ -572,7 +634,7 @@ elif page == 'Access Gap':
     with b_:
         lv = fac.level.value_counts()
         show(card('Facilities by level', 'What kind of care exists?', 'target'),
-             donut(list(lv.index), list(lv.values), [BLUE, RED, ORANGE][:len(lv)], f'{len(fac)}'))
+             donut(list(lv.index), list(lv.values), [TEAL, NAVY, ORANGE][:len(lv)], f'{len(fac)}', 'facilities'))
 
 # ---------------------------- Stage 1 ---------------------------------------
 elif page == 'Stage 1 · Access':
@@ -637,15 +699,20 @@ elif page == 'Stage 1 · Access':
             curve = [solve_stage1(k, limit_km)[1] for k in range(1, 11)]
         extra = np.diff([0] + curve)
         fig = go.Figure(go.Scatter(x=list(range(1, 11)), y=curve, mode='lines+markers', customdata=extra,
-                                   line=dict(color=BLUE, width=3, shape='spline'), fill='tozeroy',
-                                   fillcolor='rgba(59,111,212,0.08)',
-                                   marker=dict(size=8, color='white', line=dict(color=BLUE, width=2.5)),
+                                   line=dict(color=TEAL, width=3.5, shape='spline'), fill='tozeroy',
+                                   fillgradient=dict(type='vertical', colorscale=[[0, 'rgba(26,127,110,0.0)'],
+                                                                                  [1, 'rgba(26,127,110,0.30)']]),
+                                   marker=dict(size=9, color='white', line=dict(color=TEAL, width=2.5)),
                                    hovertemplate='%{x} dispensaries<br>%{y:,.0f} covered'
                                                  '<br>+%{customdata:,.0f} from the last one<extra></extra>'))
         if K >= 1:
-            fig.add_vline(x=K, line_dash='dash', line_color=GOLD, line_width=1.5)
+            fig.add_vline(x=K, line_dash='dot', line_color=NAVY, line_width=1.5)
+            fig.add_trace(go.Scatter(x=[K], y=[curve[K - 1]], mode='markers+text', hoverinfo='skip',
+                                     text=[f'<b>{curve[K - 1]:,.0f}</b>'], textposition='top left',
+                                     textfont=dict(color=NAVY, size=12.5),
+                                     marker=dict(size=14, color=NAVY, line=dict(color='white', width=3))))
         fig.update_xaxes(title='New dispensaries', dtick=1, showgrid=False)
-        fig.update_yaxes(title='People covered', rangemode='tozero')
+        fig.update_yaxes(title='People covered', rangemode='tozero', tickformat=',.0f')
         show(card('Coverage for each budget', 'Diminishing returns', 'gauge'), chart_layout(fig))
 
 # ---------------------------- Stage 2 ---------------------------------------
@@ -702,7 +769,7 @@ else:
     with a:
         parts = [COST_UPG * n_up, COST_STAFF * n_staff, max(B - spent, 0)]
         show(card('Budget split', 'Where do the units go?', 'wallet'),
-             donut(['Upgrades', 'Clinicians', 'Unused'], parts, ['#7C3AED', BLUE, '#CBD5E1'], f'{spent} / {B}')
+             donut(['Upgrades', 'Clinicians', 'Unused'], parts, [NAVY, TEAL, '#D5DEE3'], f'{spent} / {B}', 'units used')
              if B > 0 else donut(['No budget'], [1], ['#CBD5E1'], '0'))
     with b_:
         box = card('Reading the result', 'Assumptions', 'layers')
